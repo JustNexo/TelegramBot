@@ -1,6 +1,7 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegaBot
@@ -58,16 +59,30 @@ namespace TelegaBot
             bot = new TelegramBotClient(token);
             bot.OnMessage += Bot_OnMessageAsync;
             bot.StartReceiving();
+            bot.OnCallbackQuery += Bot_OnCallbackQuery;
             Console.ReadLine();
             bot.StopReceiving();
         }
 
-
-
+        private async static void Bot_OnCallbackQuery(object sender, Telegram.Bot.Args.CallbackQueryEventArgs e)
+        {
+            int id = e.CallbackQuery.Message.MessageId;
+            if (e.CallbackQuery.Data == "profile")
+            {
+                try
+                {
+                    await bot.EditMessageTextAsync(chatId: e.CallbackQuery.From.Id, messageId: id, text: "123");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+                
+            }
+        }
 
         static async void Bot_OnMessageAsync(object sender, Telegram.Bot.Args.MessageEventArgs e)
         {
-            
 
             int chatid = Convert.ToInt32(e.Message.Chat.Id);
 
@@ -78,13 +93,13 @@ namespace TelegaBot
 
             MySqlCommand command = new MySqlCommand(sql, con);
 
-             string name = Convert.ToString(await command.ExecuteScalarAsync());
+            string name = Convert.ToString(await command.ExecuteScalarAsync());
             if (name == "1")
             {
                 await bot.SendStickerAsync(chatid, "CAACAgIAAxkBAAEDKdtheHoSKSn7VYFdHBHjWhDIa8hiKgAClwADO2AkFLPjVSHrbN7ZIQQ");
                 await bot.SendTextMessageAsync(chatid, hello, replyMarkup: inlineKeyboard);
             }
-            else 
+            else
             {
                 MySqlCommand command1 = new MySqlCommand($"INSERT INTO `clients`(`id`, `balance`) VALUES ({chatid},0)", con);
                 await command1.ExecuteScalarAsync();
