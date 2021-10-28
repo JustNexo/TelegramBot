@@ -75,8 +75,55 @@ namespace TelegaBot
             bot.OnMessage += Bot_OnMessageAsync;
             bot.StartReceiving();
             bot.OnCallbackQuery += Bot_OnCallbackQuery;
+            Distrib();
             Console.ReadLine();
             bot.StopReceiving();
+        }
+
+        private static void Distrib() // рассылка
+        {
+            var token = "1185472193:AAEpsueEM1jNGHHOCoYBju9PM4MxBDZIGxE";
+            TelegramBotClient bot = new TelegramBotClient(token);
+            bot.OnMessage += Bot_OnMessage;
+            bot.StartReceiving();
+            Console.ReadLine();
+            bot.StopReceiving();
+
+    }
+
+        private static async void Bot_OnMessage(object sender, Telegram.Bot.Args.MessageEventArgs e)
+        {
+            using (MySqlConnection con1 = new MySqlConnection(sqlcon))
+            {
+                con1.Open();
+                MySqlCommand command1 = new MySqlCommand("SELECT `id` FROM `clients` WHERE 1", con1);
+                using (MySqlDataReader reader = command1.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        list.Add(reader.GetString(0));
+                    }
+                }
+                if (e.Message.Photo != null)
+                {
+                    foreach (var item in list)
+                    {
+                        //bot.SendPhotoAsync();
+                        try { await bot.GetFileAsync(e.Message.Photo[1].FileId); await bot.SendPhotoAsync(chatId: item, photo: e.Message.Photo[1].FileId); }
+                        catch (Exception) { Console.WriteLine(item + " Has blocked the bot, or chat is not available "); }
+                    }
+                }
+                else
+                {
+                    foreach (var item in list)
+                    {
+                        //bot.SendPhotoAsync();
+                        try { await bot.SendTextMessageAsync(item, e.Message.Text); }
+                        catch (Exception) { Console.WriteLine(item + " Has blocked the bot, or chat is not available "); }
+                    }        
+                }
+                list.Clear();
+            }
         }
 
         private async static void Bot_OnCallbackQuery(object sender, Telegram.Bot.Args.CallbackQueryEventArgs e)
@@ -169,14 +216,14 @@ namespace TelegaBot
                         {
                             await bot.SendTextMessageAsync(chatid, "Загружаю файл... ⌛️");
 
-                            using (var fileStream = System.IO.File.OpenWrite("file.txt"))
+                            using (var fileStream = System.IO.File.OpenWrite($"{e.Message.Document.FileId}.txt"))
                             {
                                 Telegram.Bot.Types.File fileInfo = await bot.GetInfoAndDownloadFileAsync(
                                   fileId: e.Message.Document.FileId,
                                   destination: fileStream
                                 );
                             }
-                            myList = new List<string>(System.IO.File.ReadAllLines("file.txt"));
+                            myList = new List<string>(System.IO.File.ReadAllLines($"{e.Message.Document.FileId}.txt"));
                             if (myList.Count == 0)
                             {
                                 await bot.SendTextMessageAsync(chatid, "Файл пустой");
@@ -226,6 +273,10 @@ namespace TelegaBot
                                         " Total 👎: " + item1.Dislikes + "\n");
                                 }
                                 await bot.SendTextMessageAsync(chatid, stringBuilder.ToString(), replyMarkup: homebutton);
+                                results.Clear();
+                                myList.Clear();
+                                ids.Clear();
+                                System.IO.File.Delete($"{e.Message.Document.FileId}.txt");
                             }
                         }
                         catch (Exception ex) { Console.WriteLine(ex); }
