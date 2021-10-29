@@ -11,6 +11,7 @@ using System.Net;
 using Newtonsoft.Json.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Telegram.Bot.Types.InputFiles;
 
 namespace TelegaBot
 {
@@ -24,6 +25,7 @@ namespace TelegaBot
         private static string[] validAuthorities = { "youtube.com", "www.youtube.com", "youtu.be", "www.youtu.be" };
 
         private static TelegramBotClient bot;
+        private static TelegramBotClient botsender = new TelegramBotClient("1185472193:AAEpsueEM1jNGHHOCoYBju9PM4MxBDZIGxE");
         private static string hello = @"YouStats -  инструмент для проверки статистики💎
 
 Что я умею?👋
@@ -84,10 +86,10 @@ namespace TelegaBot
         {
             var token = "1185472193:AAEpsueEM1jNGHHOCoYBju9PM4MxBDZIGxE";
             TelegramBotClient bot = new TelegramBotClient(token);
-            bot.OnMessage += Bot_OnMessage;
-            bot.StartReceiving();
+            botsender.OnMessage += Bot_OnMessage;
+            botsender.StartReceiving();
             Console.ReadLine();
-            bot.StopReceiving();
+            botsender.StopReceiving();
 
     }
 
@@ -106,18 +108,28 @@ namespace TelegaBot
                 }
                 if (e.Message.Photo != null)
                 {
-                    foreach (var item in list)
+                    using (FileStream fsSource = new FileStream($"{e.Message.Photo[3].FileId}.jpg",
+            FileMode.Open, FileAccess.Read))
                     {
-                        //bot.SendPhotoAsync();
-                        try { await bot.GetFileAsync(e.Message.Photo[1].FileId); await bot.SendPhotoAsync(chatId: item, photo: e.Message.Photo[1].FileId); }
-                        catch (Exception) { Console.WriteLine(item + " Has blocked the bot, or chat is not available "); }
+                        await botsender.GetInfoAndDownloadFileAsync(e.Message.Photo[3].FileId, destination: fsSource);
+                        InputOnlineFile file = new InputOnlineFile(fsSource);
+                        foreach (var item in list)
+                        {
+                            try
+                            {
+                                await bot.SendPhotoAsync(chatId: item, photo: file);
+                            }
+                            catch (Exception) { Console.WriteLine(item + " Has blocked the bot, or chat is not available "); }
+                        }
+                        fsSource.Close();
+                        fsSource.Dispose();
                     }
+                    System.IO.File.Delete($"{e.Message.Photo[3].FileId}.jpg");
                 }
                 else
                 {
                     foreach (var item in list)
                     {
-                        //bot.SendPhotoAsync();
                         try { await bot.SendTextMessageAsync(item, e.Message.Text); }
                         catch (Exception) { Console.WriteLine(item + " Has blocked the bot, or chat is not available "); }
                     }        
